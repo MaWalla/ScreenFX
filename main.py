@@ -99,7 +99,7 @@ class ScreenFX(Core):
         monitors = get_monitors()
         try:
             chosen_monitor = monitors[self.config.get('monitor')]
-        except IndexError:
+        except (TypeError, IndexError):
             chosen_monitor = None
 
         while chosen_monitor not in monitors:
