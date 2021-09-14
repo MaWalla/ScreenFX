@@ -74,7 +74,6 @@ class ScreenFX(Core):
                     exit(1)
             else:
                 print(f'Device {name} is missing the cutout key, which is required for ScreenFX though, skipping it.')
-                exit(1)
 
         if not screenfx_devices:
             print('ScreenFX is missing valid devices, perhaps none of them have a cutout specified? Exiting...')
