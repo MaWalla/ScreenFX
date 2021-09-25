@@ -143,6 +143,6 @@ class ScreenFX(Core):
         )
 
         return np.flip(np.array([
-            np.array(value.mean(axis=0) * device_instance.brightness).astype(int)
+            np.array(value.mean(axis=0))
             for value in cutout
         ]), axis=1)
