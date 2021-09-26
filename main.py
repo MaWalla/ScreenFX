@@ -127,9 +127,10 @@ class ScreenFX(Core):
                 duration = (time() - start) * 1000
 
                 if duration > self.frame_sleep:
-                    print('WARNING: data cycle took longer than frame time!')
-                    print(f'frame time: {round(self.frame_sleep, 2)}ms, cycle time: {round(duration, 2)}ms')
-                    print('If this happens repeatedly, consider lowering the fps.')
+                    if not self.launch_arguments.no_performance_warnings:
+                        print('WARNING: data cycle took longer than frame time!')
+                        print(f'frame time: {round(self.frame_sleep, 2)}ms, cycle time: {round(duration, 2)}ms')
+                        print('If this happens repeatedly, consider lowering the fps.')
                 else:
                     sleep((self.frame_sleep - duration) / 1000)
 
