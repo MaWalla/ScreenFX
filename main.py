@@ -11,7 +11,7 @@ from immersivefx import Core
 class ScreenFX(Core):
     name = 'ScreenFX'
 
-    target_versions = ['dev']
+    target_versions = ['1.1']
     target_platforms = ['all']
 
     def __init__(self, *args, config, **kwargs):
@@ -26,7 +26,7 @@ class ScreenFX(Core):
         }
 
         # raw_data is 3-dimensional here with the screen's pixel_amount of rgb arrays
-        self.raw_data = np.zeros([monitor.width, monitor.height, 4])
+        self.raw_data = np.zeros([monitor.height, monitor.width, 4])
 
         # cutouts follow the scheme: lower limit, upper limit, axis
         cutout_presets = {
@@ -138,7 +138,7 @@ class ScreenFX(Core):
         lower_limit, upper_limit, axis = self.cutouts[device['cutout']]
 
         cutout = np.array_split(
-            self.raw_data.take(indices=range(lower_limit, upper_limit), axis=0)[:, :, :3].mean(axis=axis),
+            self.raw_data.take(indices=range(lower_limit, upper_limit), axis=axis)[:, :, :3].mean(axis=axis),
             device_instance.leds,
             axis=0,
         )
