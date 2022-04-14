@@ -118,21 +118,26 @@ class ScreenFX(Core):
         return chosen_monitor
 
     def data_loop(self, *args, **kwargs):
-        with mss() as sct:
-            while True:
-                start = time()
-
+        if self.launch_arguments.single_threaded:
+            with mss() as sct:
                 self.raw_data = np.array(sct.grab(self.monitor_range))
 
-                duration = (time() - start) * 1000
+        else:
+            with mss() as sct:
+                while True:
+                    start = time()
 
-                if duration > self.frame_sleep:
-                    if not self.launch_arguments.no_performance_warnings:
-                        print('WARNING: data cycle took longer than frame time!')
-                        print(f'frame time: {round(self.frame_sleep, 2)}ms, cycle time: {round(duration, 2)}ms')
-                        print('If this happens repeatedly, consider lowering the fps.')
-                else:
-                    sleep((self.frame_sleep - duration) / 1000)
+                    self.raw_data = np.array(sct.grab(self.monitor_range))
+
+                    duration = (time() - start) * 1000
+
+                    if duration > self.frame_sleep:
+                        if not self.launch_arguments.no_performance_warnings:
+                            print('WARNING: data cycle took longer than frame time!')
+                            print(f'frame time: {round(self.frame_sleep, 2)}ms, cycle time: {round(duration, 2)}ms')
+                            print('If this happens repeatedly, consider lowering the fps.')
+                    else:
+                        sleep((self.frame_sleep - duration) / 1000)
 
     def device_processing(self, device, device_instance):
         lower_limit, upper_limit, axis = self.cutouts[device['cutout']]
