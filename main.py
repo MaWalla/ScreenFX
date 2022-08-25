@@ -1,17 +1,25 @@
 import numpy as np
 
-from time import time, sleep
-
 from mss import mss
 from screeninfo import get_monitors
 
-from immersivefx import Core
+from immersivefx import Core, ManagedLoopThread
+
+
+__all__ = ['ManagedMSSLoopThread', 'ScreenFX']
+
+
+class ManagedMSSLoopThread(ManagedLoopThread):
+
+    def loop(self, *args, **kwargs):
+        with mss() as sct:
+            super().loop(*args, **kwargs, sct=sct)
 
 
 class ScreenFX(Core):
     name = 'ScreenFX'
 
-    target_versions = ['1.1']
+    target_versions = ['1.2']
     target_platforms = ['all']
 
     def __init__(self, *args, config, **kwargs):
@@ -117,27 +125,22 @@ class ScreenFX(Core):
 
         return chosen_monitor
 
-    def data_loop(self, *args, **kwargs):
+    def start_data_thread(self):
+        self.data_thread = ManagedMSSLoopThread(
+            target=self.data_loop,
+            args=(),
+            kwargs={},
+        )
+
+        self.data_thread.start()
+
+    def data_processing(self, *args, sct=None, **kwargs):
         if self.launch_arguments.single_threaded:
-            with mss() as sct:
+            with mss() as sct:  # this is very inefficient but that doesn't matter for this mode
                 self.raw_data = np.array(sct.grab(self.monitor_range))
 
         else:
-            with mss() as sct:
-                while True:
-                    start = time()
-
-                    self.raw_data = np.array(sct.grab(self.monitor_range))
-
-                    duration = (time() - start) * 1000
-
-                    if duration > self.frame_sleep:
-                        if not self.launch_arguments.no_performance_warnings:
-                            print('WARNING: data cycle took longer than frame time!')
-                            print(f'frame time: {round(self.frame_sleep, 2)}ms, cycle time: {round(duration, 2)}ms')
-                            print('If this happens repeatedly, consider lowering the fps.')
-                    else:
-                        sleep((self.frame_sleep - duration) / 1000)
+            self.raw_data = np.array(sct.grab(self.monitor_range))
 
     def device_processing(self, device, device_instance):
         lower_limit, upper_limit, axis = self.cutouts[device['cutout']]
