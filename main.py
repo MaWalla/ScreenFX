@@ -59,7 +59,7 @@ class ScreenFX(Core):
         }
 
         self.cutouts = {
-            **cutout_presets[config.get('preset', 'medium')],
+            **cutout_presets[config.get('screenfx_preset', 'medium')],
         }
         self.devices = self.add_device_cutouts()
 
@@ -71,14 +71,13 @@ class ScreenFX(Core):
         devices = self.config.get('devices')
 
         for name, device_config in self.devices.items():
-            cutout = devices.get(name).get('cutout')
+            cutout = devices.get(name).get('screenfx_cutout')
 
             if cutout:
                 if cutout in self.cutouts:
-                    screenfx_devices[name] = {**device_config, 'cutout': cutout}
+                    screenfx_devices[name] = {**device_config, 'screenfx_cutout': cutout}
                 else:
-                    print(f'Device {name} has an invalid cutout. If its a custom one, please make sure')
-                    print('its specified in custom_cutouts.py')
+                    print(f'Device {name} has an invalid cutout. Available cutouts are: {self.cutouts}')
                     exit(1)
             else:
                 print(f'Device {name} is missing the cutout key, which is required for ScreenFX though, skipping it.')
@@ -105,7 +104,7 @@ class ScreenFX(Core):
         """
         monitors = get_monitors()
         try:
-            chosen_monitor = monitors[self.config.get('monitor')]
+            chosen_monitor = monitors[self.config.get('screenfx_monitor')]
         except (TypeError, IndexError):
             chosen_monitor = None
 
@@ -143,7 +142,7 @@ class ScreenFX(Core):
             self.raw_data = np.array(sct.grab(self.monitor_range))
 
     def device_processing(self, device, device_instance):
-        lower_limit, upper_limit, axis = self.cutouts[device['cutout']]
+        lower_limit, upper_limit, axis = self.cutouts[device['screenfx_cutout']]
 
         cutout = np.array_split(
             self.raw_data.take(indices=range(lower_limit, upper_limit), axis=axis)[:, :, :3].mean(axis=axis),
