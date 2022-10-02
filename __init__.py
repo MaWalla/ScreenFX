@@ -1,5 +1,7 @@
-from .main import ScreenFX
+from .mss_capture import ScreenFXMSS
+from .video_capture import ScreenFXVideoCapture
 
 modes = [
-    ScreenFX,
+    ScreenFXMSS,
+    ScreenFXVideoCapture,
 ]

@@ -1,69 +1,60 @@
 import numpy as np
 
-from mss import mss
-from screeninfo import get_monitors
-
-from immersivefx import Core, ManagedLoopThread
+from immersivefx import Core
 
 
-__all__ = ['ManagedMSSLoopThread', 'ScreenFX']
+__all__ = ['ScreenFXBase']
 
 
-class ManagedMSSLoopThread(ManagedLoopThread):
-
-    def loop(self, *args, **kwargs):
-        with mss() as sct:
-            super().loop(*args, **kwargs, sct=sct)
-
-
-class ScreenFX(Core):
-    name = 'ScreenFX'
+class ScreenFXBase(Core):
+    name = 'ScreenFX (Base)'
 
     target_versions = ['1.2']
     target_platforms = ['all']
 
+    capture_range = {
+        'left': 0,
+        'top': 0,
+        'width': 0,
+        'height': 0,
+    }
+    
     def __init__(self, *args, config, **kwargs):
-        super().__init__(*args, config=config, **kwargs)
-
-        monitor = self.get_monitor()
-        self.monitor_range = {
-            'left': monitor.x,
-            'top': monitor.y,
-            'width': monitor.width,
-            'height': monitor.height,
-        }
-
-        # raw_data is 3-dimensional here with the screen's pixel_amount of rgb arrays
-        self.raw_data = np.zeros([monitor.height, monitor.width, 4])
-
         # cutouts follow the scheme: lower limit, upper limit, axis
         cutout_presets = {
             'low': {
-                'left': (0, int(monitor.width * 0.05), 1),
-                'right': (int(monitor.width * 0.95), int(monitor.width), 1),
-                'bottom': (int(monitor.height * 0.95), int(monitor.height), 0),
-                'top': (0, int(monitor.height * 0.05), 0),
+                'left': (0, int(self.capture_range.get('width') * 0.05), 1),
+                'right': (int(self.capture_range.get('width') * 0.95), int(self.capture_range.get('width')), 1),
+                'bottom': (int(self.capture_range.get('height') * 0.95), int(self.capture_range.get('height')), 0),
+                'top': (0, int(self.capture_range.get('height') * 0.05), 0),
             },
             'medium': {
-                'left': (0, int(monitor.width * 0.1), 1),
-                'right': (int(monitor.width * 0.9), int(monitor.width), 1),
-                'bottom': (int(monitor.height * 0.9), int(monitor.height), 0),
-                'top': (0, int(monitor.height * 0.1), 0),
+                'left': (0, int(self.capture_range.get('width') * 0.1), 1),
+                'right': (int(self.capture_range.get('width') * 0.9), int(self.capture_range.get('width')), 1),
+                'bottom': (int(self.capture_range.get('height') * 0.9), int(self.capture_range.get('height')), 0),
+                'top': (0, int(self.capture_range.get('height') * 0.1), 0),
             },
             'high': {
-                'left': (0, int(monitor.width * 0.15), 1),
-                'right': (int(monitor.width * 0.85), int(monitor.width), 1),
-                'bottom': (int(monitor.height * 0.85), int(monitor.height), 0),
-                'top': (0, int(monitor.height * 0.15), 0),
+                'left': (0, int(self.capture_range.get('width') * 0.15), 1),
+                'right': (int(self.capture_range.get('width') * 0.85), int(self.capture_range.get('width')), 1),
+                'bottom': (int(self.capture_range.get('height') * 0.85), int(self.capture_range.get('height')), 0),
+                'top': (0, int(self.capture_range.get('height') * 0.15), 0),
+            },
+            'extreme': {
+                'left': (0, int(self.capture_range.get('width') * 0.33), 1),
+                'right': (int(self.capture_range.get('width') * 0.67), int(self.capture_range.get('width')), 1),
+                'bottom': (int(self.capture_range.get('height') * 0.67), int(self.capture_range.get('height')), 0),
+                'top': (0, int(self.capture_range.get('height') * 0.33), 0),
             },
         }
 
         self.cutouts = {
-            **cutout_presets[config.get('screenfx_preset', 'medium')],
+            **cutout_presets[config.get('screenfx_preset', 'extreme')],
         }
-        self.devices = self.add_device_cutouts()
+        
+        super().__init__(*args, config=config, **kwargs)
 
-        self.start_threads()
+        self.devices = self.add_device_cutouts()
 
     def add_device_cutouts(self):
         screenfx_devices = {}
@@ -96,50 +87,6 @@ class ScreenFX(Core):
         print('          █ █   █ █ █   █   █ █ █ █    █ █         ')
         print('        ██   ██ █ █ ███ ███ █  ██ █   ██ ██        ')
         print('---------------------------------------- by MaWalla')
-
-    def get_monitor(self):
-        """
-        Choice menu for the used monitor,
-        can also be set statically by setting a "monitor" key in the config.
-        """
-        monitors = get_monitors()
-        try:
-            chosen_monitor = monitors[self.config.get('screenfx_monitor')]
-        except (TypeError, IndexError):
-            chosen_monitor = None
-
-        while chosen_monitor not in monitors:
-            print('ScreenFX requires a monitor, but no such key was set in the config.')
-            print('Pick a monitor please:\n')
-            print('---------------------------------------------------')
-            for index, monitor in enumerate(monitors):
-                print(f'{index}: {monitor.name}')
-
-            choice = input()
-
-            try:
-                chosen_monitor = monitors[int(choice)]
-            except (IndexError, ValueError):
-                print(f'Invalid choice! It must be a number bigger than 0 and smaller than {len(monitors)}, try again!')
-
-        return chosen_monitor
-
-    def start_data_thread(self):
-        self.data_thread = ManagedMSSLoopThread(
-            target=self.data_loop,
-            args=(),
-            kwargs={},
-        )
-
-        self.data_thread.start()
-
-    def data_processing(self, *args, sct=None, **kwargs):
-        if self.launch_arguments.single_threaded:
-            with mss() as sct:  # this is very inefficient but that doesn't matter for this mode
-                self.raw_data = np.array(sct.grab(self.monitor_range))
-
-        else:
-            self.raw_data = np.array(sct.grab(self.monitor_range))
 
     def device_processing(self, device, device_instance):
         lower_limit, upper_limit, axis = self.cutouts[device['screenfx_cutout']]
